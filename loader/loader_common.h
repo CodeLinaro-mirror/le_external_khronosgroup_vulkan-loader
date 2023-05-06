@@ -39,6 +39,8 @@
 #include "vk_layer_dispatch_table.h"
 #include "vk_loader_extensions.h"
 
+#include "settings.h"
+
 typedef enum VkStringErrorFlagBits {
     VK_STRING_ERROR_NONE = 0x00000000,
     VK_STRING_ERROR_LENGTH = 0x00000001,
@@ -130,6 +132,8 @@ enum layer_type_flags {
 struct loader_layer_properties {
     VkLayerProperties info;
     enum layer_type_flags type_flags;
+    enum loader_settings_layer_control settings_control_value;
+
     uint32_t interface_version;  // PFN_vkNegotiateLoaderLayerInterfaceVersion
     char *manifest_file_name;
     char *lib_name;
@@ -297,6 +301,8 @@ struct loader_instance {
     VkLayerDbgFunctionNode *InstanceCreationDeletionDebugFunctionHead;
 
     VkAllocationCallbacks alloc_callbacks;
+
+    loader_settings settings;
 
     bool portability_enumeration_enabled;
 

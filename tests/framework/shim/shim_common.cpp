@@ -101,13 +101,20 @@ void PlatformShim::reset() {
     hkey_local_machine_explicit_layers.clear();
     hkey_local_machine_implicit_layers.clear();
     hkey_local_machine_drivers.clear();
+    hkey_local_machine_settings.clear();
+    hkey_current_user_settings.clear();
 }
 
 void PlatformShim::set_fake_path(ManifestCategory category, fs::path const& path) {}
 void PlatformShim::add_known_path(fs::path const& path) {}
 
 void PlatformShim::add_manifest(ManifestCategory category, fs::path const& path, bool use_local_machine) {
-    if (category == ManifestCategory::implicit_layer) {
+    if (category == ManifestCategory::settings) {
+        if (use_local_machine)
+            hkey_local_machine_settings.emplace_back(path.str());
+        else
+            hkey_current_user_settings.emplace_back(path.str());
+    } else if (category == ManifestCategory::implicit_layer) {
         if (use_local_machine)
             hkey_local_machine_implicit_layers.emplace_back(path.str());
         else
@@ -160,6 +167,7 @@ void PlatformShim::redirect_category(fs::path const& new_path, ManifestCategory 
 #include <unistd.h>
 
 std::string category_path_name(ManifestCategory category) {
+    if (category == ManifestCategory::settings) return "settings.d";
     if (category == ManifestCategory::implicit_layer) return "implicit_layer.d";
     if (category == ManifestCategory::explicit_layer)
         return "explicit_layer.d";
@@ -188,6 +196,11 @@ void parse_and_add_env_var_override(std::vector<std::string>& paths, std::string
 void PlatformShim::redirect_category(fs::path const& new_path, ManifestCategory category) {
     std::vector<std::string> paths;
     auto home = fs::path(get_env_var("HOME"));
+    if (category == ManifestCategory::settings) {
+        redirect_path(home / ".local/share/vulkan" / category_path_name(category), new_path);
+        return;
+    }
+
     if (home.size() != 0) {
         paths.push_back((home / ".config").str());
         paths.push_back((home / ".local/share").str());
@@ -235,4 +248,7 @@ void PlatformShim::redirect_dlopen_name(fs::path const& filename, fs::path const
 
 bool PlatformShim::is_dlopen_redirect_name(fs::path const& filename) { return dlopen_redirection_map.count(filename.str()) == 1; }
 
+fs::path PlatformShim::query_default_redirect_path(ManifestCategory category) {
+    return fs::path(SYSCONFDIR) / "vulkan" / category_path_name(category);
+}
 #endif

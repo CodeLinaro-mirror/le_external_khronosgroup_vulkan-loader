@@ -45,7 +45,7 @@
 #include <adapters.h>
 #endif
 
-enum class ManifestCategory { implicit_layer, explicit_layer, icd };
+enum class ManifestCategory { implicit_layer, explicit_layer, icd, settings };
 enum class GpuType { unspecified, integrated, discrete, external };
 
 #if defined(WIN32)
@@ -179,6 +179,8 @@ struct PlatformShim {
     std::vector<RegistryEntry> hkey_local_machine_explicit_layers;
     std::vector<RegistryEntry> hkey_local_machine_implicit_layers;
     std::vector<RegistryEntry> hkey_local_machine_drivers;
+    std::vector<RegistryEntry> hkey_local_machine_settings;
+    std::vector<RegistryEntry> hkey_current_user_settings;
 
     std::wstring app_package_path;
 
@@ -198,6 +200,8 @@ struct PlatformShim {
 
     void redirect_dlopen_name(fs::path const& filename, fs::path const& actual_path);
     bool is_dlopen_redirect_name(fs::path const& filename);
+
+    fs::path query_default_redirect_path(ManifestCategory category);
 
     std::unordered_map<std::string, fs::path> redirection_map;
     std::unordered_map<std::string, fs::path> dlopen_redirection_map;

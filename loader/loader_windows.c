@@ -1069,4 +1069,63 @@ cleanup:
     loader_instance_heap_free(inst, packages);
     return ret;
 }
+
+VkResult windows_get_loader_settings_file_path(const struct loader_instance *inst, char **out_path) {
+    VkResult result = VK_SUCCESS;
+    DWORD access_flags = KEY_QUERY_VALUE;
+    HKEY key = NULL;
+
+    char name[MAX_STRING_SIZE] = {0};
+    DWORD name_size = sizeof(name);
+
+    *out_path = NULL;
+
+    // exit early if we are running with admin privileges
+    if (is_high_integrity()) {
+        goto out;
+    }
+
+    LONG rtn_value = RegOpenKeyEx(DEFAULT_VK_REGISTRY_HIVE, VK_SETTINGS_INFO_REGISTRY_LOC, 0, access_flags, &key);
+
+    if (ERROR_SUCCESS != rtn_value) {
+        goto out;
+    }
+
+    rtn_value = ERROR_SUCCESS;
+    for (DWORD idx = 0; rtn_value == ERROR_SUCCESS; idx++) {
+        DWORD value = 0;
+        DWORD value_size = sizeof(value);
+        rtn_value = RegEnumValue(key, idx, name, &name_size, NULL, NULL, (LPBYTE)&value, &value_size);
+
+        if (ERROR_SUCCESS != rtn_value) {
+            break;
+        }
+
+        uint32_t start_of_path_filename = 0;
+        for (uint32_t last_char = name_size; last_char > 0; last_char--) {
+            if (name[last_char] == '\\') {
+                start_of_path_filename = last_char + 1;
+                break;
+            }
+        }
+
+        if (strcmp(VK_LOADER_SETTINGS_FILENAME, &(name[start_of_path_filename])) == 0) {
+            *out_path = loader_instance_heap_alloc(inst, name_size, VK_SYSTEM_ALLOCATION_SCOPE_INSTANCE);
+            if (*out_path == NULL) {
+                result = VK_ERROR_OUT_OF_HOST_MEMORY;
+                goto out;
+            }
+            strcpy(*out_path, name);
+            break;
+        }
+    }
+
+out:
+    if (NULL != key) {
+        RegCloseKey(key);
+    }
+
+    return result;
+}
+
 #endif  // _WIN32
